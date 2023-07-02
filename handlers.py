@@ -3,6 +3,8 @@ import db
 from aiogram import types, Router
 from aiogram.filters import Command
 
+from src.money_transaction_params import get_money_transaction_params
+
 
 router = Router()
 
@@ -20,51 +22,31 @@ async def start_command(message: types.Message):
 
 @router.message(Command('give'))
 async def give_money(message: types.Message):
-    arguments = message.text.split()
-    if len(arguments) != 3:
-        await message.answer("Сорян, не могу понять.\n Нужно ввести что-то типа: /give HrenMorzhoviy 100")
-        return
-    _, to_user, money = arguments
-    if not money.isnumeric():
-        await message.answer("Вместо суммы ты ввёл какое-то говно.")
-        return
-    from_user = message.from_user.username
-    if '@' in to_user:
-        to_user = to_user.replace('@', '')
-    new_balance = db.db_give(from_user, to_user, float(money))
+    params = await get_money_transaction_params(message)
+
+    new_balance = db.db_give(params)
     bablance_for_user = abs(new_balance)
-    if new_balance == 'Error':
-        print("Что-то в моей работе пошло не так, попробуй-ка позже.")
-    elif new_balance == 0:
-        await message.answer(f"Ты дал {money} этому, как его... @{to_user}. Теперь вы в расчёте.")
+
+    if new_balance == 0:
+        await message.answer(f"Ты дал {params.money} этому, как его... @{params.to_user}. Теперь вы в расчёте.")
     elif new_balance > 0:
-        await message.answer(f"Ты дал {money} этому, как его... @{to_user}. Теперь он должен тебе {bablance_for_user}.")
+        await message.answer(f"Ты дал {params.money} этому, как его... @{params.to_user}. Теперь он должен тебе {bablance_for_user}.")
     elif new_balance < 0:
-        await message.answer(f"Ты дал {money} этому, как его... @{to_user}. Теперь ты должен ему {bablance_for_user}.")
+        await message.answer(f"Ты дал {params.money} этому, как его... @{params.to_user}. Теперь ты должен ему {bablance_for_user}.")
 
 @router.message(Command('take'))
 async def take_money(message: types.Message):
-    arguments = message.text.split()
-    if len(arguments) != 3:
-        await message.answer("Сорян, не могу понять.\n Нужно ввести что-то типа: /give HrenMorzhoviy 100")
-        return
-    _, from_user, money = arguments
-    if not money.isnumeric():
-        await message.answer("Вместо суммы ты ввёл какое-то говно.")
-        return
-    to_user = message.from_user.username
-    if '@' in from_user:
-        from_user = from_user.replace('@', '')
-    new_balance = db.db_give(from_user, to_user, float(money))
+    params = await get_money_transaction_params(message, True)
+
+    new_balance = db.db_give(params)
     bablance_for_user = abs(new_balance)
-    if new_balance == 'Error':
-        print("Что-то в моей работе пошло не так, попробуй-ка позже.")
-    elif new_balance == 0:
-        await message.answer(f"Ты взял {money} у этого, как его... @{from_user}. Теперь вы в расчёте.")
+
+    if new_balance == 0:
+        await message.answer(f"Ты взял {params.money} у этого, как его... @{params.from_user}. Теперь вы в расчёте.")
     elif new_balance > 0:
-        await message.answer(f"Ты взял {money} у этого, как его... @{from_user}. Теперь ты должен ему {bablance_for_user}.")
+        await message.answer(f"Ты взял {params.money} у этого, как его... @{params.from_user}. Теперь ты должен ему {bablance_for_user}.")
     elif new_balance < 0:
-        await message.answer(f"Ты взял {money} у этого, как его... @{from_user}. Теперь он должен тебе {bablance_for_user}.")
+        await message.answer(f"Ты взял {params.money} у этого, как его... @{params.from_user}. Теперь он должен тебе {bablance_for_user}.")
 
 @router.message(Command('balance'))
 async def check_balance(message: types.Message):
