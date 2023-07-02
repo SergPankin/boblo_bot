@@ -1,5 +1,6 @@
 BOT_TOKEN = "your-tg-bot-token"
 
+# db creds and settings
 host = "your-db-host-connection-string"
 user = "your-db-user"
 password = "your-password"
