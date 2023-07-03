@@ -82,7 +82,6 @@ def add_transaction(connection, from_user_id, to_user_id, money, cur_id, comment
 
 def db_give(params, cur_id = 1):
     connection = open_db_connection()
-    print(params)
 
     if connection:
         from_user_id = add_and_return_user_id(connection, params.from_user)
@@ -133,3 +132,141 @@ def request_balance(first_user, second_user, cur_id = 1):
     print("[INFO] PostgreSQL connection closed")
 
     return result
+
+
+GET_TRANSACTIONS = """
+    SELECT
+        timestamp,
+        from_tp,
+        to_tp,
+        sum,
+        currency_id,
+        comment
+    FROM transactions
+    WHERE
+        (from_tp = {from_user} AND to_tp = {to_user})
+       OR
+        (from_tp = {to_user} AND to_tp = {from_user})
+      AND currency_id = {cur_id}
+    ORDER BY timestamp DESC
+    LIMIT {limit};
+"""
+
+GET_ALL_TRANSACTIONS = """
+    SELECT
+        timestamp,
+        from_tp,
+        to_tp,
+        sum,
+        currency_id,
+        comment
+    FROM transactions
+    WHERE
+        (from_tp = {from_user} AND to_tp = {to_user})
+       OR
+        (from_tp = {to_user} AND to_tp = {from_user})
+      AND currency_id = {cur_id}
+    ORDER BY timestamp DESC;
+"""
+
+GET_TRANSACTIONS_AMOUNT = """
+    SELECT
+        COUNT(*)
+    FROM transactions
+    WHERE
+        (from_tp = {from_user} AND to_tp = {to_user})
+       OR
+        (from_tp = {to_user} AND to_tp = {from_user});
+"""
+
+def get_transactions(connection, params, from_user_id, to_user_id):
+    with connection.cursor() as cursor:
+        if params.history_length:
+            cursor.execute(
+                GET_TRANSACTIONS.format(
+                    from_user=from_user_id,
+                    to_user=to_user_id,
+                    cur_id=1,
+                    limit=params.history_length
+                )
+            )
+        else:
+            cursor.execute(
+                GET_ALL_TRANSACTIONS.format(
+                    from_user=from_user_id,
+                    to_user=to_user_id,
+                    cur_id=1
+                )
+            )
+        history_list = cursor.fetchall()
+
+        cursor.execute(
+            GET_TRANSACTIONS_AMOUNT.format(
+                    from_user=from_user_id,
+                    to_user=to_user_id
+                )
+        )
+        history_amount = cursor.fetchone()[0]
+    return history_amount, history_list
+
+
+def process_timestamp(time):
+    return time.date()
+
+
+class HistoryListItem:
+    timestamp='',
+    from_user='',
+    to_user='',
+    sum='',
+    currency_name='',
+    comment=''
+    is_reversed_as_for_from_user=False
+
+
+#timestamp 0
+#from_tp 1
+#to_tp 2
+#sum 3
+#currency_id 4
+#comment 5
+def process_history_item(item, params, from_user_id):
+    result = HistoryListItem()
+    result.timestamp = process_timestamp(item[0]) #timestamp
+
+    result.from_user = params.from_user
+    result.to_user = params.to_user
+    if item[1] == from_user_id: #from_user
+        result.is_reversed_as_for_from_user = True
+
+    result.sum = item[3] #sum
+
+    result.currency_name = 'KZT' #4
+    result.comment = item[5] #comment
+
+    return result
+
+
+def db_get_transactions(params):
+    connection = open_db_connection()
+
+    if connection:
+        from_user_id = add_and_return_user_id(connection, params.from_user)
+        to_user_id = add_and_return_user_id(connection, params.to_user)
+        print(f'Это от кого: {from_user_id}')
+        print(f'Это кому: {to_user_id}')
+
+        history_amount, history_list = get_transactions(connection, params, from_user_id, to_user_id)
+
+        list_processed_history = []
+        for history_item in reversed(history_list):
+            processed_history_item = process_history_item(history_item, params, from_user_id)
+            list_processed_history.append(processed_history_item)
+
+        connection.close()
+        print("[INFO] PostgreSQL connection closed")
+    else:
+        print(SOMETHING_WENT_WRONG_EXC)
+        raise Exception(SOMETHING_WENT_WRONG_EXC)
+
+    return history_amount, list_processed_history

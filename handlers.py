@@ -3,6 +3,8 @@ import db
 from aiogram import types, Router
 from aiogram.filters import Command
 
+from src.history_message import make_history_message
+from src.history_transaction_params import get_history_transaction_params
 from src.money_transaction_params import get_money_transaction_params
 
 
@@ -68,3 +70,11 @@ async def check_balance(message: types.Message):
         await message.answer(f"@{second_user} должен тебе {bablance_for_user}. Доставай паяльник...")
     elif bablance < 0:
         await message.answer(f"Ты должен @{second_user} {bablance_for_user}. Неплохо бы отдать бабки. Коллекторы уже в пути...")
+
+@router.message(Command('history'))
+async def get_history(message: types.Message):
+    params = await get_history_transaction_params(message)
+
+    transactions_amount, transaction_list = db.db_get_transactions(params)
+
+    await message.answer(make_history_message(transaction_list, transactions_amount))
