@@ -1,6 +1,9 @@
 import psycopg2
 from config import host, user, password, dbname, port, sslmode, target_session_attrs
 
+SOMETHING_WENT_WRONG_EXC = "Что-то в моей работе пошло не так, попробуй-ка позже."
+
+
 def open_db_connection():
     try:
         connection = psycopg2.connect(
@@ -77,23 +80,24 @@ def add_transaction(connection, from_user_id, to_user_id, money, cur_id, comment
         )
         print("Added transaction to transactions!")
 
-def db_give(from_user, to_user, money, cur_id = 1, comment = ''):
+def db_give(params, cur_id = 1):
     connection = open_db_connection()
+    print(params)
 
     if connection:
-        from_user_id = add_and_return_user_id(connection, from_user)
-        to_user_id = add_and_return_user_id(connection, to_user)
+        from_user_id = add_and_return_user_id(connection, params.from_user)
+        to_user_id = add_and_return_user_id(connection, params.to_user)
         print(f'Это от кого: {from_user_id}')
         print(f'Это кому: {to_user_id}')
 
-        add_transaction(connection, from_user_id, to_user_id, money, cur_id, comment)
+        add_transaction(connection, from_user_id, to_user_id, params.money, cur_id, params.comment)
 
-        new_balance = process_pair(connection, from_user_id, to_user_id, money, cur_id)
+        new_balance = process_pair(connection, from_user_id, to_user_id, params.money, cur_id)
         connection.close()
         print("[INFO] PostgreSQL connection closed")
     else:
-        print("Не удалось установить подключение к БД")
-        new_balance = 'Error'
+        print(SOMETHING_WENT_WRONG_EXC)
+        raise Exception(SOMETHING_WENT_WRONG_EXC)
 
     return new_balance
 
