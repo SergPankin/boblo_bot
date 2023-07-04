@@ -124,11 +124,11 @@ def request_balance(first_user, second_user, cur_id = 1):
             else:
                 result = 0.00
 
+        connection.close()
     else:
         print("Не удалось установить подключение к БД")
         result = 'Error'
 
-    connection.close()
     print("[INFO] PostgreSQL connection closed")
 
     return result
