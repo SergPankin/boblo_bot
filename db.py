@@ -236,7 +236,7 @@ def process_history_item(item, params, from_user_id):
 
     result.from_user = params.from_user
     result.to_user = params.to_user
-    if item[1] == from_user_id: #from_user
+    if item[1] != from_user_id: #from_user
         result.is_reversed_as_for_from_user = True
 
     result.sum = item[3] #sum
