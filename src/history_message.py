@@ -15,7 +15,7 @@ def make_date(time):
     return f"{time.isoformat()} ({dayname_dict[time.weekday()]})"
 
 
-def make_history_message(item, current_using_timestamp):
+def format_history_message(item, current_using_timestamp):
     user1 = f'@{item.from_user}'
     user2 = f'@{item.to_user}'
     sum = str(item.sum)
@@ -40,7 +40,7 @@ def make_history_message(transaction_list, transactions_amount):
     cur_tp = datetime.date.min
     msg = f"In total {len(transaction_list)}/{transactions_amount} transactions printed\n"
     for transaction_item in transaction_list:
-        new_msg, cur_tp = make_history_message(transaction_item, cur_tp)
+        new_msg, cur_tp = format_history_message(transaction_item, cur_tp)
         msg += new_msg
 
     return msg
