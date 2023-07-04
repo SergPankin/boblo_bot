@@ -14,3 +14,8 @@ sudo apt-get install libpq-dev
 1. Скопировать миграции в БД в облаке
 2. Установить зависимости
 3. Запускать на ВМ main.py в фоновом режимпе (nohup)
+
+Как запустить на докере:
+1. sudo docker build . -t bot/boblo_bot:0.1
+3. sudo docker run --rm --name=boblo bot/boblo_bot:0.1
+4. sudo docker stop boblo
