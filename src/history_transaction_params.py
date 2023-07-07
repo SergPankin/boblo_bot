@@ -12,7 +12,7 @@ GOVNO_HISTORY_EXC = "Вместо количества транзакций ты
 
 
 def check_args_amount(arguments):
-    if 3 == len(arguments):
+    if 2 == len(arguments):
         return True
     return False
 

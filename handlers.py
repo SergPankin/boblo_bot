@@ -3,6 +3,7 @@ import db
 from aiogram import types, Router
 from aiogram.filters import Command
 
+from src.default_params import get_default_params
 from src.history_message import make_history_message
 from src.history_transaction_params import get_history_transaction_params
 from src.money_transaction_params import get_money_transaction_params
@@ -78,3 +79,18 @@ async def get_history(message: types.Message):
     transactions_amount, transaction_list = db.db_get_transactions(params)
 
     await message.answer(make_history_message(transaction_list, transactions_amount))
+
+SOMETHING_WRONG_EXC = 'Something went WRONG while updating default currency. No users data updated'
+
+# Добавляем новое поле - дефолтная валюта у юзера. По умолчанию ставим тенге
+# Делаем массив сокращений для валюты для случая, если менять валюту геморно
+@router.message(Command('default'))
+async def get_history(message: types.Message):
+    params = await get_default_params(message)
+
+    is_ok = db.set_default_cur(params)
+    if not is_ok:
+        await message.answer(SOMETHING_WRONG_EXC)
+        raise Exception(SOMETHING_WRONG_EXC)
+
+    await message.answer(f"Default currency of @{params.user} is set to {params.cur_data.cur_name}")

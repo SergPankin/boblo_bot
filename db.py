@@ -246,7 +246,6 @@ def process_history_item(item, params, from_user_id):
 
     return result
 
-
 def db_get_transactions(params):
     connection = open_db_connection()
 
@@ -270,3 +269,42 @@ def db_get_transactions(params):
         raise Exception(SOMETHING_WENT_WRONG_EXC)
 
     return history_amount, list_processed_history
+
+
+UPDATE_DEFAULT_CURRENCY = """
+    WITH upd AS (
+        UPDATE users
+        SET
+            default_cur = {cur}
+        WHERE user_id = {user_id}
+        RETURNING 1
+    )
+    SELECT COUNT(*) from upd;
+"""
+
+
+def set_default_cur(params):
+    is_successful = False
+    connection = open_db_connection()
+
+    if connection:
+        user_id = add_and_return_user_id(connection, params.user)
+        print(f'Кому проставляем дефолтную валюту: {user_id}')
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                UPDATE_DEFAULT_CURRENCY.format(
+                    user_id=user_id,
+                    cur=params.cur_data.cur_id,
+                )
+            )
+            users_updated_amount = cursor.fetchone()[0]
+            is_successful = users_updated_amount != 0
+
+        connection.close()
+        print("[INFO] PostgreSQL connection closed")
+    else:
+        print(SOMETHING_WENT_WRONG_EXC)
+        raise Exception(SOMETHING_WENT_WRONG_EXC)
+
+    return is_successful
