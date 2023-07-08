@@ -1,6 +1,8 @@
 import psycopg2
 from config import host, user, password, dbname, port, sslmode, target_session_attrs
 
+from src.currency_map import CurData 
+
 SOMETHING_WENT_WRONG_EXC = "Что-то в моей работе пошло не так, попробуй-ка позже."
 
 
@@ -76,11 +78,57 @@ def process_pair(connection, from_user_id, to_user_id, money, cur_id):
 def add_transaction(connection, from_user_id, to_user_id, money, cur_id, comment):
     with connection.cursor() as cursor:
         cursor.execute(
-            f"""INSERT INTO transactions (timestamp, from_tp, to_tp, sum, currency_id, comment) VALUES (NOW(), '{from_user_id}', '{to_user_id}', '{money}', '{cur_id}', '{comment}');"""
+            f"""INSERT INTO transactions (
+                    timestamp,
+                    from_tp,
+                    to_tp,
+                    sum,
+                    currency_id,
+                    comment
+                ) VALUES (
+                    NOW(),
+                    '{from_user_id}',
+                    '{to_user_id}',
+                    '{money}',
+                    '{cur_id}',
+                    '{comment}'
+                );
+            """
         )
         print("Added transaction to transactions!")
 
-def db_give(params, cur_id = 1):
+
+GET_DEFAULT_CURRENCY = """
+    SELECT default_cur
+    FROM users
+    WHERE user_id = {user_id};
+"""
+
+GET_CURRENCY_NAME = """
+    SELECT
+        cur_name
+    FROM currencies
+    WHERE cur_id = {cur_id};
+"""
+
+def get_default_currency(connection, user_id):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            GET_DEFAULT_CURRENCY.format(
+                user_id=user_id,
+            )
+        )
+        cur_id = cursor.fetchone()[0]
+        cursor.execute(
+            GET_CURRENCY_NAME.format(
+                cur_id=cur_id
+            )
+        )
+        cur_name = cursor.fetchone()[0]
+        return CurData(cur_id, cur_name)
+
+
+def db_give(params):
     connection = open_db_connection()
 
     if connection:
@@ -89,9 +137,13 @@ def db_give(params, cur_id = 1):
         print(f'Это от кого: {from_user_id}')
         print(f'Это кому: {to_user_id}')
 
-        add_transaction(connection, from_user_id, to_user_id, params.money, cur_id, params.comment)
+        if params.cur_data == '':
+            default_cur_user_id = add_and_return_user_id(connection, params.def_cur_user)
+            params.cur_data = get_default_currency(connection, default_cur_user_id)
 
-        new_balance = process_pair(connection, from_user_id, to_user_id, params.money, cur_id)
+        add_transaction(connection, from_user_id, to_user_id, params.money, params.cur_data.cur_id, params.comment)
+
+        new_balance = process_pair(connection, from_user_id, to_user_id, params.money, params.cur_data.cur_id)
         connection.close()
         print("[INFO] PostgreSQL connection closed")
     else:
@@ -100,18 +152,35 @@ def db_give(params, cur_id = 1):
 
     return new_balance
 
-def request_balance(first_user, second_user, cur_id = 1):
+GET_BALANCE = """
+    SELECT
+        balance,
+        main_id
+    FROM pairs
+    WHERE (
+        (main_id = '{main_id}' AND secondary_id = '{secondary_id}') 
+       OR 
+        (main_id = '{secondary_id}' AND secondary_id = '{main_id}')
+        )
+      AND currency_id = '{cur_id}';
+"""
+
+def request_balance(params):
     connection = open_db_connection()
     if connection:
-        main_id = add_and_return_user_id(connection, first_user)
-        secondary_id = add_and_return_user_id(connection, second_user)
+        main_id = add_and_return_user_id(connection, params.from_user)
+        secondary_id = add_and_return_user_id(connection, params.to_user)
+
+        if params.cur_data == '':
+            params.cur_data = get_default_currency(connection, main_id)
+
         with connection.cursor() as cursor:
             cursor.execute(
-                f"""
-                SELECT balance, main_id
-                FROM pairs
-                WHERE ((main_id = '{main_id}' AND secondary_id = '{secondary_id}') OR (main_id = '{secondary_id}' AND secondary_id = '{main_id}')) AND currency_id = '{cur_id}';
-                """
+                GET_BALANCE.format(
+                    main_id=main_id,
+                    secondary_id=secondary_id,
+                    cur_id=params.cur_data.cur_id,
+                )
             )
             current_pair = cursor.fetchone()
             if current_pair:
@@ -131,7 +200,7 @@ def request_balance(first_user, second_user, cur_id = 1):
 
     print("[INFO] PostgreSQL connection closed")
 
-    return result
+    return result, params.cur_data.cur_name
 
 
 GET_TRANSACTIONS = """
@@ -143,10 +212,11 @@ GET_TRANSACTIONS = """
         currency_id,
         comment
     FROM transactions
-    WHERE
+    WHERE (
         (from_tp = {from_user} AND to_tp = {to_user})
        OR
         (from_tp = {to_user} AND to_tp = {from_user})
+        )
       AND currency_id = {cur_id}
     ORDER BY timestamp DESC
     LIMIT {limit};
@@ -161,10 +231,11 @@ GET_ALL_TRANSACTIONS = """
         currency_id,
         comment
     FROM transactions
-    WHERE
+    WHERE (
         (from_tp = {from_user} AND to_tp = {to_user})
        OR
         (from_tp = {to_user} AND to_tp = {from_user})
+        )
       AND currency_id = {cur_id}
     ORDER BY timestamp DESC;
 """
@@ -173,10 +244,12 @@ GET_TRANSACTIONS_AMOUNT = """
     SELECT
         COUNT(*)
     FROM transactions
-    WHERE
+    WHERE (
         (from_tp = {from_user} AND to_tp = {to_user})
        OR
-        (from_tp = {to_user} AND to_tp = {from_user});
+        (from_tp = {to_user} AND to_tp = {from_user})
+        )
+      AND currency_id = {cur_id};
 """
 
 def get_transactions(connection, params, from_user_id, to_user_id):
@@ -186,7 +259,7 @@ def get_transactions(connection, params, from_user_id, to_user_id):
                 GET_TRANSACTIONS.format(
                     from_user=from_user_id,
                     to_user=to_user_id,
-                    cur_id=1,
+                    cur_id=params.cur_data.cur_id,
                     limit=params.history_length
                 )
             )
@@ -195,7 +268,7 @@ def get_transactions(connection, params, from_user_id, to_user_id):
                 GET_ALL_TRANSACTIONS.format(
                     from_user=from_user_id,
                     to_user=to_user_id,
-                    cur_id=1
+                    cur_id=params.cur_data.cur_id
                 )
             )
         history_list = cursor.fetchall()
@@ -203,7 +276,8 @@ def get_transactions(connection, params, from_user_id, to_user_id):
         cursor.execute(
             GET_TRANSACTIONS_AMOUNT.format(
                     from_user=from_user_id,
-                    to_user=to_user_id
+                    to_user=to_user_id,
+                    cur_id=params.cur_data.cur_id,
                 )
         )
         history_amount = cursor.fetchone()[0]
@@ -241,11 +315,10 @@ def process_history_item(item, params, from_user_id):
 
     result.sum = item[3] #sum
 
-    result.currency_name = 'KZT' #4
+    result.currency_name = params.cur_data.cur_name
     result.comment = item[5] #comment
 
     return result
-
 
 def db_get_transactions(params):
     connection = open_db_connection()
@@ -255,6 +328,9 @@ def db_get_transactions(params):
         to_user_id = add_and_return_user_id(connection, params.to_user)
         print(f'Это от кого: {from_user_id}')
         print(f'Это кому: {to_user_id}')
+
+        if params.cur_data == '':
+            params.cur_data = get_default_currency(connection, from_user_id)
 
         history_amount, history_list = get_transactions(connection, params, from_user_id, to_user_id)
 
@@ -270,3 +346,42 @@ def db_get_transactions(params):
         raise Exception(SOMETHING_WENT_WRONG_EXC)
 
     return history_amount, list_processed_history
+
+
+UPDATE_DEFAULT_CURRENCY = """
+    WITH upd AS (
+        UPDATE users
+        SET
+            default_cur = {cur}
+        WHERE user_id = {user_id}
+        RETURNING 1
+    )
+    SELECT COUNT(*) from upd;
+"""
+
+
+def set_default_cur(params):
+    is_successful = False
+    connection = open_db_connection()
+
+    if connection:
+        user_id = add_and_return_user_id(connection, params.user)
+        print(f'Кому проставляем дефолтную валюту: {user_id}')
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                UPDATE_DEFAULT_CURRENCY.format(
+                    user_id=user_id,
+                    cur=params.cur_data.cur_id,
+                )
+            )
+            users_updated_amount = cursor.fetchone()[0]
+            is_successful = users_updated_amount != 0
+
+        connection.close()
+        print("[INFO] PostgreSQL connection closed")
+    else:
+        print(SOMETHING_WENT_WRONG_EXC)
+        raise Exception(SOMETHING_WENT_WRONG_EXC)
+
+    return is_successful
