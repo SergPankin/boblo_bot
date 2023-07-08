@@ -3,6 +3,7 @@ import db
 from aiogram import types, Router
 from aiogram.filters import Command
 
+import src.currency_map as currency_map
 from src.balance_params import get_balance_params
 from src.default_params import get_default_params
 from src.history_message import make_history_message
@@ -96,3 +97,15 @@ async def get_history(message: types.Message):
         raise Exception(SOMETHING_WRONG_EXC)
 
     await message.answer(f"Default currency of @{params.user} is set to {params.cur_data.cur_name}")
+
+@router.message(Command('alias'))
+async def get_history(message: types.Message):
+    params = await get_default_params(message)
+
+    currency_aliases_set = currency_map.get_aliases(params)
+
+    msg = f'Aliases for {params.cur_data.cur_name}:\n'
+    for alias in currency_aliases_set:
+        msg += f"\t{alias}\n"
+
+    await message.answer(msg)

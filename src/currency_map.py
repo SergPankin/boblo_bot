@@ -92,7 +92,7 @@ for currency_aliases_set, currency_data in ALL_CURRENCIES:
 GOVNO_CURRENCY_EXC = "Вместо валюты ты ввёл какое-то говно."
 
 def get_cur_data(cur_str):
-    cur_data = CURRENCY_MAP.get(cur_str)
+    cur_data = CURRENCY_MAP.get(cur_str.lower())
     if not cur_data:
         raise Exception(GOVNO_CURRENCY_EXC)
     
@@ -100,7 +100,7 @@ def get_cur_data(cur_str):
 
 
 def try_to_get_cur_data(mb_cur_str):
-    cur_data = cur_data = CURRENCY_MAP.get(mb_cur_str)
+    cur_data = cur_data = CURRENCY_MAP.get(mb_cur_str.lower())
     if not cur_data:
         return ('', False)
     
@@ -117,3 +117,9 @@ def make_wrong_currency_message():
     #    print(f"{key}: {value.cur_name}")
 
     return msg
+
+def get_aliases(params):
+    for currency_aliases_set, currency_data in ALL_CURRENCIES:
+        if currency_data == params.cur_data:
+            return currency_aliases_set
+        
