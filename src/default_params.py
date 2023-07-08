@@ -12,7 +12,7 @@ GOVNO_CURRENCY_EXC = "Вместо валюты ты ввёл какое-то г
 
 
 def check_args_amount(arguments):
-    if len(arguments) == 1:
+    if len(arguments) == 2:
         return True
     return False
 

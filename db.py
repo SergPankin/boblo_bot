@@ -138,7 +138,8 @@ def db_give(params):
         print(f'Это кому: {to_user_id}')
 
         if params.cur_data == '':
-            params.cur_data = get_default_currency(connection, from_user_id)
+            default_cur_user_id = add_and_return_user_id(connection, params.def_cur_user)
+            params.cur_data = get_default_currency(connection, default_cur_user_id)
 
         add_transaction(connection, from_user_id, to_user_id, params.money, params.cur_data.cur_id, params.comment)
 

@@ -99,6 +99,14 @@ def get_cur_data(cur_str):
     return cur_data
 
 
+def try_to_get_cur_data(mb_cur_str):
+    cur_data = cur_data = CURRENCY_MAP.get(mb_cur_str)
+    if not cur_data:
+        return ('', False)
+    
+    return (cur_data, True)
+
+
 def make_wrong_currency_message():
     msg = GOVNO_CURRENCY_EXC
     msg += f'\nДоступные сейчас валюты: \n'
