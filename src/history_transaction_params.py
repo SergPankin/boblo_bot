@@ -1,18 +1,21 @@
 from aiogram import types
 
+import src.currency_map as currency_map
 
 class HistoryTransactionParams:
     from_user = ''
     to_user = ''
     history_length = ''
+    cur_data = ''
 
 
-GOVNO_ARGS_EXC = "Сорян, не могу понять.\n Нужно ввести что-то типа: /history @HrenMorzhoviy 10"
+GOVNO_ARGS_EXC = "Сорян, не могу понять.\n Нужно ввести что-то типа: /history @HrenMorzhoviy 10 [currency_name]"
 GOVNO_HISTORY_EXC = "Вместо количества транзакций ты ввёл какое-то говно."
+GOVNO_CURRENCY_EXC = "Вместо валюты ты ввёл какое-то говно."
 
 
 def check_args_amount(arguments):
-    if 2 == len(arguments):
+    if 3 <= len(arguments) <= 4:
         return True
     return False
 
@@ -22,7 +25,7 @@ def check_history_length(len_str):
         return True
     if len_str.isnumeric() and int(len_str) > 0:
         return True
-    return False 
+    return False
 
 
 def trim_user(user_str):
@@ -43,14 +46,21 @@ async def get_history_transaction_params(message: types.Message):
     
     result = HistoryTransactionParams()
   
+    result.to_user = trim_user(arguments[1])
+    result.from_user = trim_user(message.from_user.username)
+
     history_length = arguments[2]
     if not check_history_length(history_length):
         await message.answer(GOVNO_HISTORY_EXC)
         raise Exception(GOVNO_HISTORY_EXC)
     
     result.history_length = 0 if history_length == '*' else int(history_length)
-    
-    result.to_user = trim_user(arguments[1])
-    result.from_user = trim_user(message.from_user.username)
+
+    if len(arguments) == 4:
+        try:
+            result.cur_data = currency_map.get_cur_data(arguments[3])
+        except Exception:
+            await message.answer(currency_map.make_wrong_currency_message())
+            raise
 
     return result

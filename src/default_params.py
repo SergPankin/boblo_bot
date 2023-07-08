@@ -1,6 +1,6 @@
 from aiogram import types
 
-from src.currency_map import CURRENCY_MAP
+import src.currency_map as currency_map
 
 class DefaultParams:
     user = ''
@@ -17,27 +17,10 @@ def check_args_amount(arguments):
     return False
 
 
-def get_cur_data(cur_str):
-    cur_data = CURRENCY_MAP.get(cur_str)
-    if not cur_data:
-        raise Exception(GOVNO_CURRENCY_EXC)
-    
-    return cur_data
-
-
 def trim_user(user_str):
     if '@' in user_str:
         return user_str.replace('@', '')
     return user_str
-
-
-def make_wrong_currency_message():
-    msg = GOVNO_CURRENCY_EXC
-    msg += f'Доступные сейчас валюты: \n'
-    for currency_data in CURRENCY_MAP:
-        msg += f'{currency_data.cur_name}\n'
-
-    return msg
 
 
 async def get_default_params(message: types.Message):
@@ -49,9 +32,9 @@ async def get_default_params(message: types.Message):
     result = DefaultParams()
   
     try:
-        result.cur_data = get_cur_data(arguments[1])
+        result.cur_data = currency_map.get_cur_data(arguments[1])
     except:
-        await message.answer(make_wrong_currency_message())
+        await message.answer(currency_map.make_wrong_currency_message())
         raise
     
     result.user = trim_user(message.from_user.username)

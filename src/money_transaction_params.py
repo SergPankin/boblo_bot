@@ -1,27 +1,45 @@
 from aiogram import types
 
+import re
+
+
+import src.currency_map as currency_map
+
 
 class MoneyTransactionParams:
     from_user = ''
     to_user = ''
     money = ''
+    cur_data = ''
     comment = ''
 
 
 GOVNO_ARGS_EXC = "Сорян, не могу понять.\n Нужно ввести что-то типа: /give @HrenMorzhoviy 100 [comment]"
 GOVNO_MONEY_EXC = "Вместо суммы ты ввёл какое-то говно."
+GOVNO_CURRENCY_EXC = "Вместо валюты ты ввёл какое-то говно."
 
 
 def check_args_amount(arguments):
-    if 3 <= len(arguments):
+    if 3 <= len(arguments) <= 4:
         return True
     return False
 
 
-def check_money_string(str_money):
-    if str_money.isnumeric():
-        return True
-    return False
+def make_money_from_string(money_str):
+    number = re.search('\d+', money_str)
+    if not number:
+        raise ValueError(GOVNO_MONEY_EXC)
+
+    money = float(number.group())
+    currency_str = money_str[len(number.group()):]
+    if len(currency_str) == 0:
+        return (money, '')
+
+    cur_data = currency_map.get_cur_data(currency_str)
+    if not cur_data:
+        raise Exception(GOVNO_CURRENCY_EXC)
+        
+    return (money, cur_data)
 
 def trim_user(user_str):
     if '@' in user_str:
@@ -47,13 +65,15 @@ async def get_money_transaction_params(message: types.Message, should_reverse_us
     
     result = MoneyTransactionParams()
   
-    money = arguments[2]
-    if not check_money_string(money):
-        await message.answer(GOVNO_MONEY_EXC)
-        raise Exception(GOVNO_MONEY_EXC)
-    
-    result.money = float(money)
-    
+    try:
+        result.money, result.cur_data = make_money_from_string(arguments[2])
+    except ValueError:
+        await message.answer(GOVNO_ARGS_EXC)
+        raise
+    except Exception:
+        await message.answer(currency_map.make_wrong_currency_message())
+        raise
+
     result.to_user = trim_user(arguments[1])
     result.from_user = trim_user(message.from_user.username)
 
