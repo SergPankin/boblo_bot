@@ -3,6 +3,14 @@ from aiogram import types
 import src.currency_map as currency_map
 
 class DefaultParams:
+    def __init__(
+        self,
+        user = '',
+        cur_data = '',
+    ):
+        self.user = user
+        self.cur_data = cur_data
+
     user = ''
     cur_data = '' #[cur_id, cur_name]
 
