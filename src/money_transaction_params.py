@@ -7,6 +7,22 @@ import src.currency_map as currency_map
 
 
 class MoneyTransactionParams:
+    def __init__(
+        self,
+        from_user = '',
+        to_user = '',
+        def_cur_user = '',
+        money = '',
+        cur_data = '',
+        comment = '',
+    ):
+        self.from_user = from_user
+        self.to_user = to_user
+        self.def_cur_user = def_cur_user
+        self.money = money
+        self.cur_data = cur_data
+        self.comment = comment
+
     from_user = ''
     to_user = ''
     def_cur_user = ''

@@ -3,6 +3,18 @@ from aiogram import types
 import src.currency_map as currency_map
 
 class HistoryTransactionParams:
+    def __init__(
+        self,
+        from_user = '',
+        to_user = '',
+        history_length = '',
+        cur_data = '',
+    ):
+        self.from_user = from_user
+        self.to_user = to_user
+        self.history_length = history_length
+        self.cur_data = cur_data
+
     from_user = ''
     to_user = ''
     history_length = ''

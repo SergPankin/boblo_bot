@@ -100,7 +100,7 @@ def get_cur_data(cur_str):
 
 
 def try_to_get_cur_data(mb_cur_str):
-    cur_data = cur_data = CURRENCY_MAP.get(mb_cur_str.lower())
+    cur_data = CURRENCY_MAP.get(mb_cur_str.lower())
     if not cur_data:
         return ('', False)
     

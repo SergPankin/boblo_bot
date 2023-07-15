@@ -4,6 +4,16 @@ import src.currency_map as currency_map
 
 
 class BalanceParams:
+    def __init__(
+        self,
+        from_user = '',
+        to_user = '',
+        cur_data = '',
+    ):
+        self.from_user = from_user
+        self.to_user = to_user
+        self.cur_data = cur_data
+
     from_user = ''
     to_user = ''
     cur_data = ''
